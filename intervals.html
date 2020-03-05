@@ -1,0 +1,274 @@
+<!--
+Quizes the intervals up and down from random notes.
+
+To build to this, the NOTES quiz assigns a number from 1 to 12 to A through G#.
+The INTERVALS quiz tests the standard interval names to their number of half steps.
+The CHANGES quiz helps you put that mental math together. 
+
+Answers that expect notes are case and spacing insensitive.
+Use 'b' for flats and '#' or 's' for sharps. 
+-->
+
+<style>
+    :root {
+        --button-1-bg: #008CBA;
+        --button-2-bg: #4CAF50;
+        --button-3-bg: #ff3155;
+        --button-text: #FFFFFF;
+        --question-bg: #ffed5e;
+        --question-border: #ffaf42;
+        --question-text: #654321;
+        --answer-border: #bbbbbb;
+        /* In rgba for dumb regex driven fade out :'D */
+        --success-bg: rgba(78,255,116,1);
+        --fail-bg: rgba(255,87,78,1);
+    }
+
+    .button-td {
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .button {
+        border: none;
+        color: var(--button-text);
+        background-color: transparent;
+        font-size: 16px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .first {
+        background-color: var(--button-1-bg);
+    }
+
+    .second {
+        background-color: var(--button-2-bg);
+    }
+
+    .third {
+        background-color: var(--button-3-bg);
+    }
+
+    .table {
+        text-align: center;
+        width: 100%;
+    }
+
+    .question {
+        text-align: center;
+        margin: 10px 0 10px 0;
+        border-radius: 25px;
+        background-color: var(--question-bg);
+        padding: 15px 32px;
+        border: 5px solid var(--question-border);
+        font-family: Arial;
+        font-size: 16px;
+        color: var(--question-text);
+    }
+
+    .center {
+        text-align: center;
+    }
+
+    .answer {
+        text-align: center;
+        width: 90%;
+        padding: 10px;
+        font-family: Arial;
+        font-size: 16px;
+        border-width: thin;
+        border-style: solid;
+        border-color: var(--answer-border);
+    }
+</style>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<table class="table">
+    <tr>
+        <td class="first button-td" width=30%>
+            <button class="button">NOTES</button>
+        </td>
+        <td class="second button-td" width=30%>
+            <button class="button">INTERVALS</button>
+        </td>
+        <td class="third button-td" width=30%>
+            <button class="button">CHANGES</button>
+        </td>
+    </tr>
+</table>
+
+<div class="question">&nbsp;</div>
+
+<div class="center">
+    <input type="text" class="answer" />
+</div>
+
+<script type="text/javascript">
+    var QuestionType = {
+        NOTES: 1,
+        INTERVALS: 2,
+        CHANGES: 3,
+    }
+
+    var curQuestionType = QuestionType.NOTES;
+    var curAnswers = [];
+
+    var questionField = document.getElementsByClassName("question")[0];
+    var answerField = document.getElementsByClassName("answer")[0];
+    var [notesButton, intervalsButton, changesButton] = document.getElementsByClassName("button");
+
+    var numbersToNotes = {
+        1: ["A"],
+        2: ["A#", "Bb"],
+        3: ["B"],
+        4: ["C"],
+        5: ["C#", "Db"],
+        6: ["D"],
+        7: ["D#", "Eb"],
+        8: ["E"],
+        9: ["F"],
+        10:["F#", "Gb"],
+        11:["G"],
+        12:["G#", "Ab"],
+    }
+    var notesToNumbers = invert(numbersToNotes);
+
+    var numbersToIntervals = {
+        1: ["minor second"],
+        2: ["major second"],
+        3: ["minor third"],
+        4: ["major third"],
+        5: ["perfect fourth"],
+        6: ["tritone"],
+        7: ["perfect fifth"],
+        8: ["minor sixth"],
+        9: ["major sixth"],
+        10:["minor seventh"],
+        11:["major seventh"],
+        12:["octave"],
+    }
+    var intervalsToNumbers = invert(numbersToIntervals);
+
+    function genNotesQuestion() {
+        const [question, answer] = sample(Math.random() < 0.5 ? numbersToNotes : notesToNumbers)
+
+        questionField.innerHTML = question;
+        curAnswers = answer;
+        curQuestionType = QuestionType.NOTES;
+    }
+
+    function genIntervalsQuestion() {
+        const [question, answer] = sample(Math.random() < 0.5 ? numbersToIntervals : intervalsToNumbers)
+
+        questionField.innerHTML = question;
+        curAnswers = answer;
+        curQuestionType = QuestionType.INTERVALS;
+    }
+
+    function genChangesQuestion() {
+        const [note, noteNumber] = sample(notesToNumbers);
+        const [interval, intervalNumber] = sample(intervalsToNumbers);
+        const upNotDown = Math.random() < 0.5;
+        const direction = upNotDown ? 1 : -1;
+        const directionText = upNotDown ? "above" : "below";
+        let targetNumber = parseInt(noteNumber) + direction * parseInt(intervalNumber);
+        if (targetNumber <= 0) {
+            targetNumber += 12;
+        } else if (targetNumber > 12) {
+            targetNumber -= 12;
+        }
+
+        questionField.innerHTML = interval + " " + directionText + " " + note;
+        curAnswers = numbersToNotes[targetNumber];
+        curQuestionType = QuestionType.CHANGES;
+    }
+
+    function genQuestion(questionType) {
+        switch (questionType) {
+            case QuestionType.NOTES:
+                genNotesQuestion();
+                break;
+            case QuestionType.INTERVALS:
+                genIntervalsQuestion();
+                break;
+            case QuestionType.CHANGES:
+                genChangesQuestion();
+                break;
+        }
+    }
+
+    function tidy(str) {
+        return str.replace(/\s/g, '').replace(/#/g,'s').toLowerCase();
+    }
+
+    function checkAnswer(expecteds, actual) {
+        answerField.value = "";
+        return expecteds.some((e) => tidy(e) === tidy(actual));
+    }
+
+    const FADE_DURATION_MS = 500;
+    const FADE_TICKS_MS = 5;
+    var flashInterval;
+    var answerRgba;
+    var answerOpacity;
+    function flashAnswer(rgba) {
+        clearInterval(flashInterval);
+        answerRgba = rgba;
+        answerOpacity = 1.0;
+
+        flashInterval = setInterval(() => {
+            answerField.style.backgroundColor = answerRgba;
+            answerOpacity -= FADE_TICKS_MS / FADE_DURATION_MS;
+            // Replace fractional number before right paren with rounded new opacity
+            answerRgba = answerRgba.replace(/[\.0-9]+\)/, `${answerOpacity.toFixed(5)})`);
+            if (answerOpacity < 0) {
+                clearInterval(flashInterval);
+            }
+        }, FADE_TICKS_MS)
+    }
+
+    notesButton.addEventListener("click", function() {
+        genNotesQuestion();
+    })
+
+    intervalsButton.addEventListener("click", function() {
+        genIntervalsQuestion();
+    })
+
+    changesButton.addEventListener("click", function() {
+        genChangesQuestion();
+    })
+
+    var colorVars = getComputedStyle(document.documentElement);
+    var successBg = colorVars.getPropertyValue("--success-bg");
+    var failBg = colorVars.getPropertyValue("--fail-bg");
+    answerField.addEventListener("keyup", function(e) {
+        if (e.key === "Enter") {
+            if (checkAnswer(curAnswers, answerField.value)) {
+                flashAnswer(successBg);
+                genQuestion(curQuestionType);
+            } else {
+                flashAnswer(failBg);
+            }
+        }
+    });
+
+    function invert(multimap) {
+        let inverted = {};
+        Object.entries(multimap).forEach(([key, values]) => {
+            values.forEach((value) => {
+                if (inverted[value]) {
+                    inverted[value].push(key);
+                } else {
+                    inverted[value] = [key];
+                }
+            });
+        });
+        return inverted;
+    }
+
+    function sample(map) {
+        return Object.entries(map)[Math.floor(Math.random()*Object.keys(map).length)]
+    }
+</script>
