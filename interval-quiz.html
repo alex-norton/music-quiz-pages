@@ -1,0 +1,282 @@
+<!--
+Quizes the intervals up and down from random notes.
+
+Answers that expect notes are case and spacing insensitive.
+Use 'b' for flats and '#' or 's' for sharps. 
+
+Intervals are annoying to type out on phones (because of caps)
+a = augmented
+d = diminished
+p = perfect
+j = major
+n = minor
+
+for double augmented or diminished, duplicate the letter
+-->
+
+
+<style>
+    :root {
+        --button-1-bg: #008CBA;
+        --button-2-bg: #4CAF50;
+        --button-text: #FFFFFF;
+        --question-bg: #ffed5e;
+        --question-border: #ffaf42;
+        --question-text: #654321;
+        --answer-border: #bbbbbb;
+        /* In rgba for dumb regex driven fade out :'D */
+        --success-bg: rgba(78, 255, 116, 1);
+        --fail-bg: rgba(255, 87, 78, 1);
+    }
+
+    .button-td {
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .button {
+        border: none;
+        color: var(--button-text);
+        background-color: transparent;
+        font-size: 16px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .first {
+        background-color: var(--button-1-bg);
+    }
+
+    .second {
+        background-color: var(--button-2-bg);
+    }
+
+    .table {
+        text-align: center;
+        width: 100%;
+    }
+
+    .question {
+        text-align: center;
+        margin: 10px 0 10px 0;
+        border-radius: 25px;
+        background-color: var(--question-bg);
+        padding: 15px 32px;
+        border: 5px solid var(--question-border);
+        font-family: Arial;
+        font-size: 16px;
+        color: var(--question-text);
+    }
+
+    .center {
+        text-align: center;
+    }
+
+    .answer {
+        text-align: center;
+        width: 90%;
+        padding: 10px;
+        font-family: Arial;
+        font-size: 16px;
+        border-width: thin;
+        border-style: solid;
+        border-color: var(--answer-border);
+    }
+</style>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<table class="table">
+    <tr>
+        <td class="first button-td" width=30%>
+            <button class="button">NOTES</button>
+        </td>
+        <td class="second button-td" width=30%>
+            <button class="button">INTERVALS</button>
+        </td>
+    </tr>
+</table>
+
+<div class="question">&nbsp;</div>
+
+<div class="center">
+    <input type="text" class="answer" />
+</div>
+
+<script type="text/javascript">
+    var QuestionType = {
+        NOTES: 1,
+        INTERVALS: 2,
+    }
+
+    var curQuestionType = QuestionType.NOTES;
+    var curAnswers = [];
+
+    var questionField = document.getElementsByClassName("question")[0];
+    var answerField = document.getElementsByClassName("answer")[0];
+    var [notesButton, intervalsButton] = document.getElementsByClassName("button");
+
+    // arbitrary, just need an anchor to check the difference of
+    var notesToStaffAndSemitone = {
+        "A": [1, 1],
+        "B": [2, 3],
+        "C": [3, 4],
+        "D": [4, 6],
+        "E": [5, 8],
+        "F": [6, 9],
+        "G": [7, 11]
+    }
+
+    // arbitrarily using major and perfect as the "default"
+    var intervalsToSemitones = {
+        "2": 2,
+        "3": 4,
+        "4": 5,
+        "5": 7,
+        "6": 9,
+        "7": 11
+    }
+
+    const perfectIntervals = [4, 5]
+
+    function generate() {
+        let [startNote, [startStaff, startSemi]] = sample(notesToStaffAndSemitone)
+        let [endNote, [endStaff, endSemi]] = sample(notesToStaffAndSemitone)
+        while (endNote === startNote) {
+            resample = sample(notesToStaffAndSemitone)
+            endNote = resample[0]
+            endStaff = resample[1][0]
+            endSemi = resample[1][1]
+        }
+        const directionIsDown = Math.random() < 0.5;
+        const endIsLower = endNote < startNote
+        // assume the end note is higher than the start note, and that we're going up
+        // if exactly one of those assumptions is wrong, invert the intervals
+        // e.g. B up to D = a third in staff = 4 - 2 + 1 and 3 semi tones = 6 - 3
+        // so B down to D is a sixth, D up to B is a sixth, D down to B is a third
+        let staffDist = Math.abs(endStaff - startStaff) + 1
+        let semiDist = Math.abs(endSemi - startSemi)
+        if ((directionIsDown && !endIsLower) || (!directionIsDown && endIsLower)) {
+            staffDist = 9 - staffDist
+            semiDist = 12 - semiDist
+        }
+        const shifts = [-1, 0, 1]
+        const [_, startShift] = sample(shifts)
+        const [__, endShift] = sample(shifts)
+        if (startShift < 0) {
+            startNote += 'b'
+            semiDist += directionIsDown ? -1 : 1
+        } else if (startShift > 0) {
+            startNote += '#'
+            semiDist += directionIsDown ? 1 : -1
+        }
+        if (endShift < 0) {
+            endNote += 'b'
+            semiDist += directionIsDown ? 1 : -1
+        } else if (endShift > 0) {
+            endNote += '#'
+            semiDist += directionIsDown ? -1 : 1
+        }
+
+        const defaultSemitoneDist = intervalsToSemitones[staffDist]
+        let diff = semiDist - defaultSemitoneDist
+        const isPerfect = perfectIntervals.includes(staffDist)
+        let quality
+        if (diff > 0) {
+            quality = 'a'.repeat(diff)
+        } else if (diff == 0) {
+            quality = isPerfect ? 'p' : 'maj'
+        } else if (!isPerfect && diff == -1) {
+            quality = 'min'
+        } else {
+            diff *= -1
+            if (!isPerfect) {
+                diff += directionIsDown ? -1 : 1
+            }
+            quality = 'd'.repeat(diff)
+        }
+        return { 'startNote': startNote, 'endNote': endNote, 'interval': quality + staffDist, 'directionIsDown': directionIsDown }
+    }
+
+    function genNotesQuestion() {
+        const { startNote, endNote, interval, directionIsDown } = generate();
+        curAnswers = [interval]
+        directionText = directionIsDown ? " down to " : " up to "
+        questionField.innerHTML = "from " + startNote + directionText + endNote
+        curQuestionType = QuestionType.NOTES;
+    }
+
+    function genIntervalsQuestion() {
+        const { startNote, endNote, interval, directionIsDown } = generate();
+        curAnswers = [endNote]
+        directionText = directionIsDown ? " down by " : " up by "
+        questionField.innerHTML = "from " + startNote + directionText + interval
+        curQuestionType = QuestionType.INTERVALS;
+    }
+
+    function genQuestion(questionType) {
+        switch (questionType) {
+            case QuestionType.NOTES:
+                genNotesQuestion();
+                break;
+            case QuestionType.INTERVALS:
+                genIntervalsQuestion();
+                break;
+        }
+    }
+
+    function tidy(str) {
+        return str.replace(/\s/g, '').replace(/#/g, 's').replace(/maj/g, 'j').replace(/min/g, 'n').toLowerCase();
+    }
+
+    function checkAnswer(expecteds, actual) {
+        answerField.value = "";
+        return expecteds.some((e) => tidy(e) === tidy(actual));
+    }
+
+    const FADE_DURATION_MS = 500;
+    const FADE_TICKS_MS = 5;
+    var flashInterval;
+    var answerRgba;
+    var answerOpacity;
+    function flashAnswer(rgba) {
+        clearInterval(flashInterval);
+        answerRgba = rgba;
+        answerOpacity = 1.0;
+
+        flashInterval = setInterval(() => {
+            answerField.style.backgroundColor = answerRgba;
+            answerOpacity -= FADE_TICKS_MS / FADE_DURATION_MS;
+            // Replace fractional number before right paren with rounded new opacity
+            answerRgba = answerRgba.replace(/[\.0-9]+\)/, `${answerOpacity.toFixed(5)})`);
+            if (answerOpacity < 0) {
+                clearInterval(flashInterval);
+            }
+        }, FADE_TICKS_MS)
+    }
+
+    notesButton.addEventListener("click", function () {
+        genNotesQuestion();
+    })
+
+    intervalsButton.addEventListener("click", function () {
+        genIntervalsQuestion();
+    })
+
+    var colorVars = getComputedStyle(document.documentElement);
+    var successBg = colorVars.getPropertyValue("--success-bg");
+    var failBg = colorVars.getPropertyValue("--fail-bg");
+    answerField.addEventListener("keyup", function (e) {
+        if (e.key === "Enter") {
+            if (checkAnswer(curAnswers, answerField.value)) {
+                flashAnswer(successBg);
+                genQuestion(curQuestionType);
+            } else {
+                flashAnswer(failBg);
+            }
+        }
+    });
+
+    function sample(map) {
+        return Object.entries(map)[Math.floor(Math.random() * Object.keys(map).length)]
+    }
+</script>
