@@ -155,7 +155,8 @@ for double augmented or diminished, duplicate the letter
         // so B down to D is a sixth, D up to B is a sixth, D down to B is a third
         let staffDist = Math.abs(endStaff - startStaff) + 1
         let semiDist = Math.abs(endSemi - startSemi)
-        if ((directionIsDown && !endIsLower) || (!directionIsDown && endIsLower)) {
+        let shouldInvert = (directionIsDown && !endIsLower) || (!directionIsDown && endIsLower)
+        if (shouldInvert) {
             staffDist = 9 - staffDist
             semiDist = 12 - semiDist
         }
@@ -190,7 +191,7 @@ for double augmented or diminished, duplicate the letter
         } else {
             diff *= -1
             if (!isPerfect) {
-                diff += directionIsDown ? -1 : 1
+                diff -= 1
             }
             quality = 'd'.repeat(diff)
         }
